@@ -89,8 +89,8 @@ echo     ^<ExecutionTimeLimit^>PT0S^</ExecutionTimeLimit^>
 echo   ^</Settings^>
 echo   ^<Actions^>
 echo     ^<Exec^>
-echo       ^<Command^>powershell.exe^</Command^>
-echo       ^<Arguments^>-WindowStyle Hidden -Command "Start-Process -FilePath '%START_SCRIPT%' -WindowStyle Hidden"^</Arguments^>
+echo       ^<Command^>conhost.exe^</Command^>
+echo       ^<Arguments^>--headless "%START_SCRIPT%"^</Arguments^>
 echo     ^</Exec^>
 echo   ^</Actions^>
 echo ^</Task^>
@@ -113,7 +113,7 @@ set "STARTUP_BAT=%STARTUP_DIR%\VieNeu-TTS-AutoStart.bat"
 echo [+] Tao startup script (backup): %STARTUP_BAT%
 (
 echo @echo off
-echo powershell.exe -WindowStyle Hidden -Command "Start-Process -FilePath '%START_SCRIPT%' -WindowStyle Hidden"
+echo conhost.exe --headless "%START_SCRIPT%"
 ) > "%STARTUP_BAT%"
 
 REM --- Clean up XML ---
@@ -122,7 +122,7 @@ del "%XML_FILE%" 2>nul
 REM --- Start immediately (hidden) ---
 echo.
 echo [+] Khoi dong server ngay bay gio (an)...
-powershell.exe -WindowStyle Hidden -Command "Start-Process -FilePath '%START_SCRIPT%' -WindowStyle Hidden"
+conhost.exe --headless "%START_SCRIPT%"
 
 echo.
 echo ==================================================
