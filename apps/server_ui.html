@@ -1154,23 +1154,25 @@
 
     async function doHealthCheck(serverId) {
         state.healthMap[serverId] = { server_id: serverId, status: 'checking', name: '' };
-        render(true);
+        updateHealthBadges();
         try {
             const result = await api('GET', `/api/servers/${serverId}/health`);
             state.healthMap[serverId] = result;
         } catch (e) {
             state.healthMap[serverId] = { server_id: serverId, status: 'error', error: e.message, name: '' };
         }
-        render(true);
+        updateHealthBadges();
     }
 
     async function doHealthCheckAll() {
         for (const s of state.servers) {
             state.healthMap[s.id] = { server_id: s.id, status: 'checking', name: s.name };
         }
-        render(true);
+        updateHealthBadges();  // lightweight update for "checking" status
         await checkAllHealth();
-        render(true);
+        updateHealthBadges();  // lightweight update with results
+        // Reset the 5-minute timer after manual check
+        startAutoHealthCheck();
     }
 
     async function doSynthesize() {
@@ -1280,17 +1282,33 @@
     }
 
     // --- Init ---
+    const HEALTH_CHECK_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
+    let _healthCheckTimer = null;
+
     async function init() {
-        render();
+        // Load all data first, then render once
         await loadServers();
         await loadCustomVoices();
-        render();
-        await checkAllHealth();
-        render();
         if (state.selectedServerId) {
             await loadVoices(state.selectedServerId);
-            render();
         }
+        render(true);
+
+        // Initial health check (lightweight badge update only)
+        await checkAllHealth();
+        updateHealthBadges();
+
+        // Auto health check every 5 minutes (lightweight, no full reload)
+        startAutoHealthCheck();
+    }
+
+    function startAutoHealthCheck() {
+        if (_healthCheckTimer) clearInterval(_healthCheckTimer);
+        _healthCheckTimer = setInterval(async () => {
+            console.log('⏰ Auto health check (every 5 min)');
+            await checkAllHealth();
+            updateHealthBadges();
+        }, HEALTH_CHECK_INTERVAL_MS);
     }
 
     init();

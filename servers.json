@@ -25,7 +25,7 @@
       "name": "NewTests",
       "host": "192.168.1.8",
       "port": 23333,
-      "is_default": false,
+      "is_default": true,
       "model_name": "pnnbao-ump/VieNeu-TTS",
       "description": "",
       "use_https": false
