@@ -33,6 +33,9 @@ CONFIG_PATH = PROJECT_ROOT / "servers.json"
 UI_PATH = APP_DIR / "server_ui.html"
 OUTPUTS_DIR = PROJECT_ROOT / "outputs"
 OUTPUTS_DIR.mkdir(exist_ok=True)
+VOICES_DIR = OUTPUTS_DIR / "voices"
+VOICES_DIR.mkdir(exist_ok=True)
+CUSTOM_VOICES_JSON = VOICES_DIR / "custom_voices.json"
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger("VieNeu.Manager")
@@ -47,6 +50,7 @@ class ServerConfig(BaseModel):
     is_default: bool = False
     model_name: str = "pnnbao-ump/VieNeu-TTS"
     description: str = ""
+    use_https: bool = False
 
 
 class ServerUpdate(BaseModel):
@@ -56,12 +60,23 @@ class ServerUpdate(BaseModel):
     is_default: Optional[bool] = None
     model_name: Optional[str] = None
     description: Optional[str] = None
+    use_https: Optional[bool] = None
+
+
+def get_api_base(server: ServerConfig) -> str:
+    """Build API base URL, handling HTTPS and default ports."""
+    protocol = "https" if server.use_https else "http"
+    # Skip port for standard ports (443 for HTTPS, 80 for HTTP)
+    if (server.use_https and server.port == 443) or (not server.use_https and server.port == 80):
+        return f"{protocol}://{server.host}/v1"
+    return f"{protocol}://{server.host}:{server.port}/v1"
 
 
 class SynthesizeRequest(BaseModel):
     server_id: str
     text: str
     voice_name: Optional[str] = None
+    custom_voice_id: Optional[str] = None  # for cloned voices
     temperature: float = 1.0
     top_k: int = 50
     max_chars: int = 256
@@ -165,7 +180,7 @@ class ServerStore:
 
 async def check_server_health(server: ServerConfig, timeout: float = 5.0) -> HealthResult:
     """Check if a VieNeu-TTS server is reachable and get model info."""
-    url = f"http://{server.host}:{server.port}/v1/models"
+    url = f"{get_api_base(server)}/models"
     start = time.monotonic()
     try:
         async with httpx.AsyncClient(timeout=timeout) as client:
@@ -220,6 +235,7 @@ async def synthesize_via_server(
     server: ServerConfig,
     text: str,
     voice_name: Optional[str] = None,
+    custom_voice_id: Optional[str] = None,
     temperature: float = 1.0,
     top_k: int = 50,
     max_chars: int = 256,
@@ -228,7 +244,7 @@ async def synthesize_via_server(
     Synthesize speech using a remote VieNeu-TTS server.
     Returns path to the generated WAV file.
     """
-    api_base = f"http://{server.host}:{server.port}/v1"
+    api_base = get_api_base(server)
 
     # Use the SDK in remote mode
     from vieneu import Vieneu
@@ -239,9 +255,21 @@ async def synthesize_via_server(
         model_name=server.model_name,
     )
 
-    # Resolve voice
+    # Determine voice: custom clone vs preset
     voice_data = None
-    if voice_name:
+    ref_audio_path = None
+    ref_text = None
+
+    if custom_voice_id:
+        # Use custom cloned voice
+        custom_voice = _get_custom_voice(custom_voice_id)
+        if custom_voice:
+            ref_audio_path = VOICES_DIR / custom_voice["filename"]
+            ref_text = custom_voice.get("ref_text", "")
+            if not ref_audio_path.exists():
+                logger.warning(f"Custom voice file not found: {ref_audio_path}")
+                ref_audio_path = None
+    elif voice_name:
         try:
             voice_data = tts.get_preset_voice(voice_name)
         except Exception:
@@ -254,6 +282,8 @@ async def synthesize_via_server(
         lambda: tts.infer(
             text=text,
             voice=voice_data,
+            ref_audio=str(ref_audio_path) if ref_audio_path else None,
+            ref_text=ref_text if ref_audio_path else None,
             temperature=temperature,
             top_k=top_k,
             max_chars=max_chars,
@@ -347,7 +377,7 @@ async def get_server_voices(server_id: str):
     if not server:
         raise HTTPException(status_code=404, detail="Server not found")
 
-    api_base = f"http://{server.host}:{server.port}/v1"
+    api_base = get_api_base(server)
     try:
         from vieneu import Vieneu
         loop = asyncio.get_event_loop()
@@ -377,6 +407,7 @@ async def synthesize(req: SynthesizeRequest):
             server=server,
             text=req.text,
             voice_name=req.voice_name,
+            custom_voice_id=req.custom_voice_id,
             temperature=req.temperature,
             top_k=req.top_k,
             max_chars=req.max_chars,
@@ -393,6 +424,103 @@ async def synthesize(req: SynthesizeRequest):
 async def serve_audio(filename: str):
     """Serve generated audio files."""
     file_path = OUTPUTS_DIR / filename
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail="Audio file not found")
+    return FileResponse(file_path, media_type="audio/wav")
+
+
+# --- Custom Voice APIs ---
+
+def _load_custom_voices() -> list:
+    """Load custom voices metadata."""
+    if CUSTOM_VOICES_JSON.exists():
+        try:
+            return json.loads(CUSTOM_VOICES_JSON.read_text(encoding="utf-8"))
+        except Exception:
+            return []
+    return []
+
+def _save_custom_voices(voices: list):
+    """Save custom voices metadata."""
+    CUSTOM_VOICES_JSON.write_text(json.dumps(voices, ensure_ascii=False, indent=2), encoding="utf-8")
+
+def _get_custom_voice(voice_id: str) -> Optional[dict]:
+    """Get a custom voice by ID."""
+    for v in _load_custom_voices():
+        if v["id"] == voice_id:
+            return v
+    return None
+
+
+@app.get("/api/custom-voices")
+async def list_custom_voices():
+    """List all custom cloned voices."""
+    return {"voices": _load_custom_voices()}
+
+
+@app.post("/api/custom-voices")
+async def upload_custom_voice(
+    file: UploadFile = File(...),
+    name: str = Form(...),
+    ref_text: str = Form(""),
+):
+    """Upload audio file to create a custom cloned voice."""
+    if not file.filename.lower().endswith((".wav", ".mp3", ".flac", ".ogg", ".m4a")):
+        raise HTTPException(status_code=400, detail="Unsupported audio format. Use WAV, MP3, FLAC, OGG, or M4A.")
+
+    voice_id = uuid.uuid4().hex[:8]
+    ext = Path(file.filename).suffix.lower()
+    filename = f"{voice_id}{ext}"
+    file_path = VOICES_DIR / filename
+
+    # Save uploaded file
+    content = await file.read()
+    file_path.write_bytes(content)
+
+    # Add to metadata
+    voices = _load_custom_voices()
+    voice_entry = {
+        "id": voice_id,
+        "name": name,
+        "filename": filename,
+        "ref_text": ref_text,
+        "created_at": time.strftime("%Y-%m-%d %H:%M:%S"),
+    }
+    voices.append(voice_entry)
+    _save_custom_voices(voices)
+
+    logger.info(f"🎙️ Custom voice uploaded: {name} ({filename})")
+    return {"voice": voice_entry}
+
+
+@app.delete("/api/custom-voices/{voice_id}")
+async def delete_custom_voice(voice_id: str):
+    """Delete a custom voice."""
+    voices = _load_custom_voices()
+    voice = next((v for v in voices if v["id"] == voice_id), None)
+    if not voice:
+        raise HTTPException(status_code=404, detail="Custom voice not found")
+
+    # Delete audio file
+    file_path = VOICES_DIR / voice["filename"]
+    if file_path.exists():
+        file_path.unlink()
+
+    # Remove from metadata
+    voices = [v for v in voices if v["id"] != voice_id]
+    _save_custom_voices(voices)
+
+    logger.info(f"🗑️ Custom voice deleted: {voice['name']}")
+    return {"ok": True}
+
+
+@app.get("/api/custom-voices/{voice_id}/audio")
+async def serve_custom_voice_audio(voice_id: str):
+    """Serve custom voice audio file for preview."""
+    voice = _get_custom_voice(voice_id)
+    if not voice:
+        raise HTTPException(status_code=404, detail="Custom voice not found")
+    file_path = VOICES_DIR / voice["filename"]
     if not file_path.exists():
         raise HTTPException(status_code=404, detail="Audio file not found")
     return FileResponse(file_path, media_type="audio/wav")

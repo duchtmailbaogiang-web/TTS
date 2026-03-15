@@ -389,9 +389,99 @@
         .setting-chip label { color: var(--text-3); font-weight: 500; }
         .setting-chip .value { color: var(--text-1); font-weight: 600; font-family: 'JetBrains Mono', monospace; font-size: 12px; }
 
+        /* ===== RANGE SLIDER ===== */
+        .range-group { display: flex; flex-direction: column; gap: 6px; }
+        .range-header { display: flex; justify-content: space-between; align-items: center; }
+        .range-value {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 13px; font-weight: 600;
+            color: var(--accent);
+            background: var(--accent-dim);
+            padding: 2px 10px;
+            border-radius: 6px;
+        }
+        input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: linear-gradient(to right, var(--accent), var(--accent) var(--range-pct, 50%), rgba(148,163,184,0.2) var(--range-pct, 50%));
+            outline: none;
+            cursor: pointer;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px; height: 18px;
+            border-radius: 50%;
+            background: var(--accent);
+            box-shadow: 0 2px 8px rgba(45,212,191,0.4);
+            cursor: pointer;
+            transition: transform 0.15s ease;
+        }
+        input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.2); }
+        input[type="range"]::-moz-range-thumb {
+            width: 18px; height: 18px;
+            border-radius: 50%;
+            background: var(--accent);
+            border: none;
+            box-shadow: 0 2px 8px rgba(45,212,191,0.4);
+            cursor: pointer;
+        }
+
         /* ===== ANIMATION ===== */
         .fade-in { animation: fadeIn 0.4s ease both; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* ===== VOICE CLONE ===== */
+        .clone-section { margin-top: 20px; padding-top: 20px; border-top: 1px solid rgba(148,163,184,0.1); }
+        .clone-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+        .clone-header h3 { font-size: 14px; color: var(--text-2); margin: 0; }
+        .voice-card {
+            display: flex; align-items: center; gap: 12px;
+            padding: 10px 14px; border-radius: 10px;
+            background: rgba(148,163,184,0.06); border: 1px solid rgba(148,163,184,0.1);
+            margin-bottom: 8px; transition: all 0.2s ease;
+        }
+        .voice-card:hover { border-color: var(--accent); background: var(--accent-dim); }
+        .voice-card .voice-icon { font-size: 20px; flex-shrink: 0; }
+        .voice-card .voice-info { flex: 1; min-width: 0; }
+        .voice-card .voice-name { font-size: 13px; font-weight: 600; color: var(--text-1); }
+        .voice-card .voice-meta { font-size: 11px; color: var(--text-3); margin-top: 2px; }
+        .voice-card .voice-actions { display: flex; gap: 6px; }
+        .voice-card .voice-actions button { font-size: 14px; padding: 4px 8px; }
+        .upload-zone {
+            border: 2px dashed rgba(148,163,184,0.2); border-radius: 12px;
+            padding: 20px; text-align: center; cursor: pointer;
+            transition: all 0.2s ease; margin-bottom: 12px;
+        }
+        .upload-zone:hover { border-color: var(--accent); background: var(--accent-dim); }
+        .upload-zone .upload-icon { font-size: 28px; margin-bottom: 6px; }
+        .upload-zone .upload-text { font-size: 12px; color: var(--text-3); }
+        .upload-form { display: none; }
+        .upload-form.active { display: block; }
+
+        /* ===== CUSTOM CONFIRM DIALOG ===== */
+        .confirm-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.6); z-index: 10000;
+            display: flex; align-items: center; justify-content: center;
+            animation: fadeIn 0.15s ease;
+        }
+        .confirm-box {
+            background: var(--card-bg); border: 1px solid rgba(148,163,184,0.15);
+            border-radius: 14px; padding: 24px 28px; min-width: 320px; max-width: 420px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+        }
+        .confirm-box .confirm-msg { font-size: 14px; color: var(--text-1); margin-bottom: 20px; line-height: 1.5; }
+        .confirm-box .confirm-actions { display: flex; gap: 10px; justify-content: flex-end; }
+        .confirm-box .confirm-actions button { padding: 8px 20px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; border: none; }
+        .confirm-box .btn-cancel { background: rgba(148,163,184,0.15); color: var(--text-2); }
+        .confirm-box .btn-cancel:hover { background: rgba(148,163,184,0.25); }
+        .confirm-box .btn-danger { background: #ef4444; color: #fff; }
+        .confirm-box .btn-danger:hover { background: #dc2626; }
+        .confirm-box .btn-warn { background: var(--accent); color: #0f172a; }
+        .confirm-box .btn-warn:hover { opacity: 0.9; }
 
         /* ===== SCROLLBAR ===== */
         ::-webkit-scrollbar { width: 6px; }
@@ -417,7 +507,14 @@
         servers: [],
         healthMap: {},   // server_id -> HealthResult
         selectedServerId: null,
-        voices: [],
+        voices: [
+            { id: 'Binh', description: 'Bình (nam miền Bắc)' },
+            { id: 'Tuyen', description: 'Tuyên (nam miền Bắc)' },
+            { id: 'Vinh', description: 'Vĩnh (nam miền Nam)' },
+            { id: 'Doan', description: 'Đoan (nữ miền Nam)' },
+            { id: 'Ly', description: 'Ly (nữ miền Bắc)' },
+            { id: 'Ngoc', description: 'Ngọc (nữ miền Bắc)' },
+        ],
         activeTab: 'synthesize',  // 'synthesize' | 'servers'
         modalOpen: false,
         modalMode: 'add', // 'add' | 'edit'
@@ -425,7 +522,34 @@
         synthesizing: false,
         synthStatus: null, // { type: 'loading'|'success'|'error', message: string }
         audioUrl: null,
+        audioAutoplay: false,  // only autoplay right after synthesis
+        selectedVoice: '',     // persist voice selection (preset:ID or clone:ID)
+        temperature: 1.0,      // persist temperature
+        ttsText: '',           // persist text input
+        customVoices: [],      // custom cloned voices
+        showUploadForm: false, // toggle upload form
+        uploading: false,      // uploading custom voice in progress
     };
+
+    // --- Custom Confirm Dialog (replaces browser confirm()) ---
+    function customConfirm(message, dangerLabel = 'Xóa') {
+        return new Promise(resolve => {
+            const overlay = document.createElement('div');
+            overlay.className = 'confirm-overlay';
+            overlay.innerHTML = `
+                <div class="confirm-box">
+                    <div class="confirm-msg">${message}</div>
+                    <div class="confirm-actions">
+                        <button class="btn-cancel" id="confirm-no">Hủy</button>
+                        <button class="btn-danger" id="confirm-yes">${dangerLabel}</button>
+                    </div>
+                </div>`;
+            document.body.appendChild(overlay);
+            overlay.querySelector('#confirm-yes').onclick = () => { overlay.remove(); resolve(true); };
+            overlay.querySelector('#confirm-no').onclick = () => { overlay.remove(); resolve(false); };
+            overlay.onclick = (e) => { if (e.target === overlay) { overlay.remove(); resolve(false); } };
+        });
+    }
 
     // --- API Helpers ---
     async function api(method, path, body = null) {
@@ -464,17 +588,113 @@
         }
     }
 
-    async function loadVoices(serverId) {
+    async function loadCustomVoices() {
         try {
-            const data = await api('GET', `/api/servers/${serverId}/voices`);
-            state.voices = data.voices || [];
+            const data = await api('GET', '/api/custom-voices');
+            state.customVoices = data.voices || [];
         } catch (e) {
-            state.voices = [];
+            console.error('Failed to load custom voices:', e);
         }
     }
 
-    // --- Render Engine ---
-    function render() {
+    async function loadVoices(serverId) {
+        try {
+            const data = await api('GET', `/api/servers/${serverId}/voices`);
+            if (data.voices && data.voices.length > 0) {
+                state.voices = data.voices;
+            }
+            // If API returns empty or fails, keep the hardcoded defaults
+        } catch (e) {
+            // Keep existing preset voices on error
+            console.log('Using cached preset voices');
+        }
+    }
+
+    // --- Render Engine (flicker-free) ---
+    let _renderTimer = null;
+    let _renderLocked = false;
+
+    function saveFormState() {
+        const textEl = document.getElementById('tts-text');
+        if (textEl) state.ttsText = textEl.value;
+        const voiceEl = document.getElementById('voice-select');
+        if (voiceEl) state.selectedVoice = voiceEl.value;
+        const tempEl = document.getElementById('temperature');
+        if (tempEl) state.temperature = parseFloat(tempEl.value) || 1.0;
+        // Save modal fields if modal is open
+        if (state.modalOpen) {
+            const fields = ['m-name','m-host','m-port','m-model','m-desc'];
+            state._modalCache = {};
+            fields.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) state._modalCache[id] = el.value;
+            });
+            const defEl = document.getElementById('m-default');
+            if (defEl) state._modalCache['m-default'] = defEl.checked;
+            const httpsEl = document.getElementById('m-https');
+            if (httpsEl) state._modalCache['m-https'] = httpsEl.checked;
+        }
+    }
+
+    function restoreFormState() {
+        // Restore TTS text
+        const textEl = document.getElementById('tts-text');
+        if (textEl && state.ttsText) textEl.value = state.ttsText;
+        // Restore voice selection
+        const voiceEl = document.getElementById('voice-select');
+        if (voiceEl && state.selectedVoice) voiceEl.value = state.selectedVoice;
+        // Restore temperature
+        const tempEl = document.getElementById('temperature');
+        if (tempEl) tempEl.value = state.temperature;
+        const tempVal = document.getElementById('temp-val');
+        if (tempVal) tempVal.textContent = state.temperature.toFixed(1);
+        // Restore modal fields
+        if (state.modalOpen && state._modalCache) {
+            Object.entries(state._modalCache).forEach(([id, val]) => {
+                const el = document.getElementById(id);
+                if (!el) return;
+                if (el.type === 'checkbox') el.checked = val;
+                else el.value = val;
+            });
+        }
+    }
+
+    function isUserInteracting() {
+        const active = document.activeElement;
+        if (!active) return false;
+        const tag = active.tagName;
+        // User is typing in input, textarea, or select
+        if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return true;
+        // User has confirm dialog open
+        if (document.querySelector('.confirm-overlay')) return true;
+        return false;
+    }
+
+    function render(force = false) {
+        // Debounce: if a render is already scheduled, skip
+        if (_renderTimer && !force) return;
+        _renderTimer = requestAnimationFrame(() => {
+            _renderTimer = null;
+            _doRender(force);
+        });
+    }
+
+    function _doRender(force = false) {
+        // If user is actively typing and this isn't a forced render, skip
+        if (!force && isUserInteracting()) return;
+
+        saveFormState();
+
+        // Remember focused element
+        const focusedId = document.activeElement?.id || null;
+        const focusedTag = document.activeElement?.tagName;
+        let selStart = null, selEnd = null;
+        if (focusedTag === 'INPUT' || focusedTag === 'TEXTAREA') {
+            selStart = document.activeElement.selectionStart;
+            selEnd = document.activeElement.selectionEnd;
+        }
+        const scrollY = window.scrollY;
+
         const app = document.getElementById('app');
         app.innerHTML = `
             ${renderHeader()}
@@ -490,6 +710,44 @@
             ${renderModal()}
         `;
         bindEvents();
+        restoreFormState();
+
+        // Restore focus and cursor position
+        if (focusedId) {
+            const el = document.getElementById(focusedId);
+            if (el) {
+                el.focus();
+                if ((el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') && selStart !== null) {
+                    try { el.setSelectionRange(selStart, selEnd); } catch(e) {}
+                }
+            }
+        }
+        window.scrollTo(0, scrollY);
+    }
+
+    // Lightweight update: only update status badges without re-rendering entire page
+    function updateHealthBadges() {
+        // Update sidebar server status badges
+        for (const s of state.servers) {
+            const health = state.healthMap[s.id];
+            const statusEl = document.querySelector(`[data-server-status="${s.id}"]`);
+            if (statusEl && health) {
+                const statusClass = 'status-' + health.status;
+                statusEl.className = `status-badge ${statusClass}`;
+                const latencyText = health.latency_ms ? `${Math.round(health.latency_ms)}ms` : '';
+                statusEl.innerHTML = `<span class="status-dot"></span>${health.status === 'online' ? 'ONLINE' : 'OFFLINE'}${latencyText ? ` ${latencyText}` : ''}`;
+            }
+        }
+        // Update the card header badge for selected server
+        const selectedBadge = document.querySelector('[data-selected-server-status]');
+        if (selectedBadge) {
+            const health = state.healthMap[state.selectedServerId];
+            if (health) {
+                const selected = state.servers.find(s => s.id === state.selectedServerId);
+                selectedBadge.className = `status-badge status-${health.status}`;
+                selectedBadge.innerHTML = `<span class="status-dot"></span>${selected?.name || ''}`;
+            }
+        }
     }
 
     function renderHeader() {
@@ -514,9 +772,6 @@
         const items = servers.map(s => {
             const health = state.healthMap[s.id];
             const isActive = s.id === state.selectedServerId;
-            const statusClass = health ? `status-${health.status}` : 'status-unknown';
-            const statusLabel = health ? health.status : 'unknown';
-            const latencyText = health?.latency_ms ? `${health.latency_ms}ms` : '';
             return `
             <div class="server-item ${isActive ? 'active' : ''}" onclick="selectServer('${s.id}')">
                 <div class="server-icon">${s.is_default ? '⭐' : '🖥️'}</div>
@@ -525,10 +780,10 @@
                     <div class="server-host">${esc(s.host)}:${s.port}</div>
                 </div>
                 <div class="server-meta">
-                    ${latencyText ? `<span class="server-latency">${latencyText}</span>` : ''}
-                    <span class="status-badge ${statusClass}">
+                    <span class="status-badge ${health ? 'status-' + health.status : 'status-unknown'}" data-server-status="${s.id}">
                         <span class="status-dot"></span>
-                        ${statusLabel}
+                        ${health ? (health.status === 'online' ? 'ONLINE' : 'OFFLINE') : '...'}
+                        ${health?.latency_ms ? ` ${Math.round(health.latency_ms)}ms` : ''}
                     </span>
                 </div>
                 <div class="server-actions">
@@ -566,13 +821,14 @@
         const selected = state.servers.find(s => s.id === state.selectedServerId);
         const health = state.healthMap[state.selectedServerId];
         const isOnline = health?.status === 'online';
-        const voiceOpts = state.voices.map(v => `<option value="${esc(v.id)}">${esc(v.description)}</option>`).join('');
+        const voiceOpts = state.voices.map(v => `<option value="${esc(v.id)}" ${v.id === state.selectedVoice ? 'selected' : ''}>${esc(v.description)}</option>`).join('');
+        const tempPct = ((state.temperature - 0.1) / 1.9 * 100).toFixed(0);
 
         return `
         <div class="card fade-in">
             <div class="card-header">
                 <h2>🎙️ Text-to-Speech</h2>
-                ${selected ? `<span class="status-badge ${health ? 'status-' + health.status : 'status-unknown'}">
+                ${selected ? `<span class="status-badge ${health ? 'status-' + health.status : 'status-unknown'}" data-selected-server-status>
                     <span class="status-dot"></span>${selected.name}
                 </span>` : ''}
             </div>
@@ -590,21 +846,27 @@
                         </select>
                     </div>
                     <div class="form-row">
-                        <div class="form-group">
+                        <div class="form-group" style="flex:2">
                             <label class="form-label">Voice</label>
-                            <select class="form-select" id="voice-select">
-                                <option value="">Default Voice</option>
-                                ${voiceOpts}
+                            <select class="form-select" id="voice-select" onchange="state.selectedVoice = this.value">
+                                <option value="" ${!state.selectedVoice ? 'selected' : ''}>Default Voice</option>
+                                ${voiceOpts.length ? `<optgroup label="📢 Preset Voices">${voiceOpts}</optgroup>` : ''}
+                                ${state.customVoices.length ? `<optgroup label="🎙️ Cloned Voices">${state.customVoices.map(cv => `<option value="clone:${cv.id}" ${state.selectedVoice === 'clone:' + cv.id ? 'selected' : ''}>🎙️ ${esc(cv.name)}</option>`).join('')}</optgroup>` : ''}
                             </select>
                         </div>
                         <div class="form-group">
-                            <label class="form-label">Temperature</label>
-                            <input type="number" class="form-input" id="temperature" value="1.0" step="0.1" min="0.1" max="2.0" />
+                            <div class="range-group">
+                                <div class="range-header">
+                                    <label class="form-label" style="margin-bottom:0">Temperature</label>
+                                    <span class="range-value" id="temp-display">${state.temperature.toFixed(1)}</span>
+                                </div>
+                                <input type="range" id="temperature" min="0.1" max="2.0" step="0.1" value="${state.temperature}" style="--range-pct: ${tempPct}%" oninput="state.temperature = parseFloat(this.value); document.getElementById('temp-display').textContent = this.value; this.style.setProperty('--range-pct', ((this.value - 0.1) / 1.9 * 100) + '%')" />
+                            </div>
                         </div>
                     </div>
                     <div class="form-group">
                         <label class="form-label">Text Input</label>
-                        <textarea class="form-textarea" id="tts-text" placeholder="Nhập văn bản cần đọc tại đây...&#10;&#10;Ví dụ: Xin chào, tôi là VieNeu. Tôi có thể giúp bạn đọc sách, làm chatbot thời gian thực, hoặc clone giọng nói."></textarea>
+                        <textarea class="form-textarea" id="tts-text" oninput="state.ttsText = this.value" placeholder="Nhập văn bản cần đọc tại đây...&#10;&#10;Ví dụ: Xin chào, tôi là VieNeu. Tôi có thể giúp bạn đọc sách, làm chatbot thời gian thực, hoặc clone giọng nói.">${esc(state.ttsText)}</textarea>
                     </div>
                     <button class="btn btn-primary" style="width:100%; padding: 14px;" id="btn-synthesize"
                             onclick="doSynthesize()" ${state.synthesizing ? 'disabled' : ''}>
@@ -618,9 +880,60 @@
                     ` : ''}
                     ${state.audioUrl ? `
                         <div class="audio-player" style="margin-top: 16px;">
-                            <audio controls autoplay src="${state.audioUrl}"></audio>
+                            <audio controls ${state.audioAutoplay ? 'autoplay' : ''} src="${state.audioUrl}"></audio>
                         </div>
                     ` : ''}
+
+                    <!-- Voice Clone Section -->
+                    <div class="clone-section">
+                        <div class="clone-header">
+                            <h3>🎙️ Voice Cloning</h3>
+                            <button class="btn btn-sm" onclick="state.showUploadForm = !state.showUploadForm; render()">
+                                ${state.showUploadForm ? '✖ Đóng' : '＋ Thêm giọng'}
+                            </button>
+                        </div>
+
+                        ${state.showUploadForm ? `
+                        <div class="upload-form active">
+                            <div class="form-group">
+                                <label class="form-label">Tên giọng nói</label>
+                                <input type="text" class="form-input" id="clone-name" placeholder="VD: Giọng của tôi" />
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">File audio mẫu (WAV, MP3...)</label>
+                                <input type="file" class="form-input" id="clone-file" accept=".wav,.mp3,.flac,.ogg,.m4a" style="padding:8px" />
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Transcript <span style="color:var(--accent);font-weight:700">(quan trọng!)</span></label>
+                                <input type="text" class="form-input" id="clone-ref-text" placeholder="Ghi chính xác nội dung nói trong file audio" />
+                                <div style="font-size:11px;color:var(--text-3);margin-top:4px">
+                                    💡 Transcript phải khớp chính xác với lời nói trong audio. Audio nên 5-15s, rõ ràng, ít noise.
+                                </div>
+                            </div>
+                            <button class="btn btn-primary btn-sm" id="btn-upload-voice" onclick="uploadCustomVoice()" style="width:100%" ${state.uploading ? 'disabled' : ''}>
+                                ${state.uploading ? '<span class="spinner"></span> Đang upload...' : '📤 Upload & Tạo giọng'}
+                            </button>
+                        </div>
+                        ` : ''}
+
+                        ${state.customVoices.length > 0 ? state.customVoices.map(cv => `
+                        <div class="voice-card">
+                            <div class="voice-icon">🎙️</div>
+                            <div class="voice-info">
+                                <div class="voice-name">${esc(cv.name)}</div>
+                                <div class="voice-meta">${cv.ref_text ? esc(cv.ref_text) : 'No transcript'} • ${cv.created_at || ''}</div>
+                            </div>
+                            <div class="voice-actions">
+                                <button class="icon-btn" onclick="previewVoice('${cv.id}')" title="Preview">🔊</button>
+                                <button class="icon-btn delete" onclick="deleteCustomVoice('${cv.id}', '${esc(cv.name)}')" title="Delete">🗑️</button>
+                            </div>
+                        </div>
+                        `).join('') : `
+                        <div style="text-align:center; color: var(--text-3); font-size: 12px; padding: 12px 0;">
+                            Chưa có giọng nào được clone. Bấm "+ Thêm giọng" để bắt đầu.
+                        </div>
+                        `}
+                    </div>
                 `}
             </div>
         </div>`;
@@ -691,7 +1004,7 @@
     function renderModal() {
         if (!state.modalOpen) return '<div class="modal-overlay"></div>';
         const isEdit = state.modalMode === 'edit';
-        const s = state.editingServer || { name: '', host: '', port: 23333, model_name: 'pnnbao-ump/VieNeu-TTS', description: '', is_default: false };
+        const s = state.editingServer || { name: '', host: '', port: 23333, model_name: 'pnnbao-ump/VieNeu-TTS', description: '', is_default: false, use_https: false };
         return `
         <div class="modal-overlay open" onclick="closeModal(event)">
             <div class="modal" onclick="event.stopPropagation()">
@@ -705,14 +1018,18 @@
                         <input class="form-input" id="m-name" value="${esc(s.name)}" placeholder="e.g. VPS Singapore" />
                     </div>
                     <div class="form-row">
-                        <div class="form-group">
-                            <label class="form-label">Host / IP</label>
-                            <input class="form-input" id="m-host" value="${esc(s.host)}" placeholder="e.g. 192.168.1.100" />
+                        <div class="form-group" style="flex:2">
+                            <label class="form-label">Host / IP / Domain</label>
+                            <input class="form-input" id="m-host" value="${esc(s.host)}" placeholder="192.168.1.100 hoặc tts.mydomain.com" />
                         </div>
-                        <div class="form-group">
+                        <div class="form-group" style="flex:1">
                             <label class="form-label">Port</label>
                             <input class="form-input" id="m-port" type="number" value="${s.port}" />
                         </div>
+                    </div>
+                    <div class="form-group" style="display:flex; align-items:center; gap: 8px;">
+                        <input type="checkbox" id="m-https" ${s.use_https ? 'checked' : ''} onchange="document.getElementById('m-port').value = this.checked ? 443 : 23333" />
+                        <label for="m-https" style="font-size:13px; color: var(--text-2); cursor:pointer;">🔒 HTTPS (dùng cho Cloudflare Tunnel / domain)</label>
                     </div>
                     <div class="form-group">
                         <label class="form-label">Model Name</label>
@@ -747,22 +1064,21 @@
 
     function switchTab(tab) {
         state.activeTab = tab;
-        render();
+        render(true);
     }
 
     async function selectServer(id) {
         state.selectedServerId = id;
-        state.voices = [];
-        render();
+        render(true);
         await loadVoices(id);
-        render();
+        render(true);
     }
 
     function openAddModal() {
         state.modalOpen = true;
         state.modalMode = 'add';
         state.editingServer = null;
-        render();
+        render(true);
     }
 
     function openEditModal(id) {
@@ -771,14 +1087,15 @@
         state.modalOpen = true;
         state.modalMode = 'edit';
         state.editingServer = { ...s };
-        render();
+        render(true);
     }
 
     function closeModal(e) {
         if (e && e.target !== e.currentTarget) return;
         state.modalOpen = false;
         state.editingServer = null;
-        render();
+        state._modalCache = null;
+        render(true);
     }
 
     async function saveServer() {
@@ -788,6 +1105,7 @@
         const modelEl = document.getElementById('m-model');
         const descEl = document.getElementById('m-desc');
         const defEl = document.getElementById('m-default');
+        const httpsEl = document.getElementById('m-https');
 
         if (!nameEl || !hostEl) { console.error('Modal elements not found'); return; }
 
@@ -797,19 +1115,21 @@
         const model_name = modelEl?.value?.trim() || 'pnnbao-ump/VieNeu-TTS';
         const description = descEl?.value?.trim() || '';
         const is_default = defEl?.checked || false;
+        const use_https = httpsEl?.checked || false;
 
         if (!name || !host) { alert('Name and Host are required.'); return; }
 
         try {
             if (state.modalMode === 'edit' && state.editingServer) {
-                await api('PUT', `/api/servers/${state.editingServer.id}`, { name, host, port, model_name, description, is_default });
+                await api('PUT', `/api/servers/${state.editingServer.id}`, { name, host, port, model_name, description, is_default, use_https });
             } else {
-                await api('POST', '/api/servers', { name, host, port, model_name, description, is_default });
+                await api('POST', '/api/servers', { name, host, port, model_name, description, is_default, use_https });
             }
             state.modalOpen = false;
             state.editingServer = null;
+            state._modalCache = null;
             await loadServers();
-            render();
+            render(true);
             console.log('Server saved successfully, UI refreshed');
         } catch (e) {
             console.error('Save server error:', e);
@@ -820,12 +1140,13 @@
     async function deleteServer(id) {
         const s = state.servers.find(s => s.id === id);
         if (!s) return;
-        if (!confirm(`Delete server "${s.name}"?`)) return;
+        const yes = await customConfirm(`Xóa server <b>"${esc(s.name)}"</b>?`);
+        if (!yes) return;
         try {
             await api('DELETE', `/api/servers/${id}`);
             if (state.selectedServerId === id) state.selectedServerId = null;
             await loadServers();
-            render();
+            render(true);
         } catch (e) {
             alert('Error: ' + e.message);
         }
@@ -833,60 +1154,136 @@
 
     async function doHealthCheck(serverId) {
         state.healthMap[serverId] = { server_id: serverId, status: 'checking', name: '' };
-        render();
+        render(true);
         try {
             const result = await api('GET', `/api/servers/${serverId}/health`);
             state.healthMap[serverId] = result;
         } catch (e) {
             state.healthMap[serverId] = { server_id: serverId, status: 'error', error: e.message, name: '' };
         }
-        render();
+        render(true);
     }
 
     async function doHealthCheckAll() {
         for (const s of state.servers) {
             state.healthMap[s.id] = { server_id: s.id, status: 'checking', name: s.name };
         }
-        render();
+        render(true);
         await checkAllHealth();
-        render();
+        render(true);
     }
 
     async function doSynthesize() {
-        const text = document.getElementById('tts-text')?.value?.trim();
+        // Save current form state before anything
+        saveFormState();
+        const text = state.ttsText?.trim();
         if (!text) { alert('Please enter text.'); return; }
         if (!state.selectedServerId) { alert('Please select a server.'); return; }
 
-        const voiceSelect = document.getElementById('voice-select');
-        const voiceName = voiceSelect?.value || null;
-        const temperature = parseFloat(document.getElementById('temperature')?.value) || 1.0;
+        // Determine voice type
+        let voiceName = null;
+        let customVoiceId = null;
+        if (state.selectedVoice.startsWith('clone:')) {
+            customVoiceId = state.selectedVoice.replace('clone:', '');
+        } else if (state.selectedVoice) {
+            voiceName = state.selectedVoice;
+        }
 
         state.synthesizing = true;
-        state.synthStatus = { type: 'loading', message: 'Đang gửi yêu cầu tới server...' };
+        state.synthStatus = { type: 'loading', message: customVoiceId ? '🎙️ Đang clone giọng nói...' : 'Đang gửi yêu cầu tới server...' };
         state.audioUrl = null;
-        render();
+        state.audioAutoplay = false;
+        render(true);
 
         try {
             const result = await api('POST', '/api/synthesize', {
                 server_id: state.selectedServerId,
-                text: text,
+                text: state.ttsText,
                 voice_name: voiceName || undefined,
-                temperature: temperature,
+                custom_voice_id: customVoiceId || undefined,
+                temperature: state.temperature,
             });
             state.audioUrl = result.audio_url;
+            state.audioAutoplay = true;
             state.synthStatus = { type: 'success', message: '✅ Tổng hợp thành công!' };
         } catch (e) {
             state.synthStatus = { type: 'error', message: '❌ Lỗi: ' + e.message };
         } finally {
             state.synthesizing = false;
-            render();
+            render(true);
+            state.audioAutoplay = false;
         }
+    }
+
+    // --- Voice Clone Actions ---
+    async function uploadCustomVoice() {
+        if (state.uploading) return; // prevent double-click
+
+        const nameEl = document.getElementById('clone-name');
+        const fileEl = document.getElementById('clone-file');
+        const refTextEl = document.getElementById('clone-ref-text');
+
+        const name = nameEl?.value?.trim();
+        if (!name) { alert('Vui lòng nhập tên giọng nói'); return; }
+        if (!fileEl?.files?.length) { alert('Vui lòng chọn file audio'); return; }
+        if (!refTextEl?.value?.trim()) {
+            const yes = await customConfirm('Bạn chưa nhập Transcript.<br>Transcript <b>rất quan trọng</b> để clone chính xác giọng nói.<br><br>Bạn vẫn muốn tiếp tục?', 'Tiếp tục');
+            if (!yes) return;
+        }
+
+        state.uploading = true;
+        render(true); // show spinner
+
+        const formData = new FormData();
+        formData.append('file', fileEl.files[0]);
+        formData.append('name', name);
+        formData.append('ref_text', refTextEl?.value || '');
+
+        try {
+            const res = await fetch(`${API}/api/custom-voices`, { method: 'POST', body: formData });
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({ detail: res.statusText }));
+                throw new Error(err.detail || 'Upload failed');
+            }
+            await loadCustomVoices();
+            state.showUploadForm = false;
+            render(true);
+        } catch (e) {
+            alert('Lỗi upload: ' + e.message);
+        } finally {
+            state.uploading = false;
+            render(true);
+        }
+    }
+
+    async function deleteCustomVoice(id, name) {
+        const yes = await customConfirm(`Xóa giọng <b>"${esc(name)}"</b>?`);
+        if (!yes) return;
+        // Optimistic: remove from UI immediately
+        if (state.selectedVoice === 'clone:' + id) state.selectedVoice = '';
+        state.customVoices = state.customVoices.filter(v => v.id !== id);
+        render(true);
+        // Then send delete to server in the background
+        try {
+            await api('DELETE', `/api/custom-voices/${id}`);
+        } catch (e) {
+            // If server delete fails, reload to restore
+            await loadCustomVoices();
+            render(true);
+            alert('Lỗi xóa: ' + e.message);
+        }
+    }
+
+    function previewVoice(id) {
+        const audio = new Audio(`${API}/api/custom-voices/${id}/audio`);
+        audio.play();
     }
 
     // --- Init ---
     async function init() {
         render();
         await loadServers();
+        await loadCustomVoices();
         render();
         await checkAllHealth();
         render();
@@ -894,11 +1291,6 @@
             await loadVoices(state.selectedServerId);
             render();
         }
-        // Auto health check every 30s
-        setInterval(async () => {
-            await checkAllHealth();
-            render();
-        }, 30000);
     }
 
     init();

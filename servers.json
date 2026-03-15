@@ -1,22 +1,34 @@
 {
   "servers": [
     {
-      "id": "local",
+      "id": "local-01",
       "name": "Local Server",
       "host": "localhost",
       "port": 23333,
       "is_default": false,
       "model_name": "pnnbao-ump/VieNeu-TTS",
-      "description": "Local LMDeploy instance"
+      "description": "Local development server",
+      "use_https": false
     },
     {
-      "id": "c24d43d7",
-      "name": "TestVPS",
+      "id": "7034b065",
+      "name": "VPS Tunnel",
+      "host": "ttsnam1.duchai.store",
+      "port": 443,
+      "is_default": false,
+      "model_name": "pnnbao-ump/VieNeu-TTS",
+      "description": "Cloudflare Tunnel",
+      "use_https": true
+    },
+    {
+      "id": "1d8d91fb",
+      "name": "NewTests",
       "host": "192.168.1.8",
       "port": 23333,
-      "is_default": true,
+      "is_default": false,
       "model_name": "pnnbao-ump/VieNeu-TTS",
-      "description": "test"
+      "description": "",
+      "use_https": false
     }
   ]
 }
