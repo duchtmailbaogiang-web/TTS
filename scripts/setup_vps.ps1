@@ -4,17 +4,13 @@
 # Run this on the VPS to install and start VieNeu-TTS server.
 #
 # Usage:
-#   irm https://raw.githubusercontent.com/duchtmailbaogiang-web/TTS/main/scripts/setup_vps.ps1 | iex
-#   --- or ---
-#   .\setup_vps.ps1 [-Model "pnnbao-ump/VieNeu-TTS"] [-Port 23333] [-InstallDir "C:\VieNeu-TTS"]
+#   powershell -ExecutionPolicy Bypass -c "irm https://raw.githubusercontent.com/duchtmailbaogiang-web/TTS/main/scripts/setup_vps.ps1 | iex"
 
-param(
-    [string]$Model = "duchtmailbaogiang-web/TTS",
-    [int]$Port = 23333,
-    [string]$InstallDir = "C:\VieNeu-TTS"
-)
-
-$ErrorActionPreference = "Stop"
+# --- Config (edit these if needed) ---
+$Model = "duchtmailbaogiang-web/TTS"
+$Port = 23333
+$InstallDir = "C:\VieNeu-TTS"
+$RepoZipUrl = "https://github.com/duchtmailbaogiang-web/TTS/archive/refs/heads/main.zip"
 
 function Write-Step($msg) { Write-Host "`n🦜 $msg" -ForegroundColor Cyan }
 function Write-OK($msg) { Write-Host "   ✅ $msg" -ForegroundColor Green }
@@ -34,7 +30,7 @@ Write-Host ""
 # --- Step 1: Check NVIDIA GPU ---
 Write-Step "Checking NVIDIA GPU..."
 try {
-    $gpuInfo = nvidia-smi --query-gpu=name,memory.total --format=csv,noheader 2>&1
+    $gpuInfo = & nvidia-smi --query-gpu=name,memory.total --format=csv,noheader 2>&1
     if ($LASTEXITCODE -ne 0) { throw "nvidia-smi failed" }
     Write-OK "GPU found: $gpuInfo"
 } catch {
@@ -44,76 +40,101 @@ try {
 
 # --- Step 2: Install uv ---
 Write-Step "Installing uv (Python package manager)..."
-if (Get-Command uv -ErrorAction SilentlyContinue) {
+$uvFound = $false
+try { if (Get-Command uv -ErrorAction SilentlyContinue) { $uvFound = $true } } catch {}
+
+if ($uvFound) {
     Write-OK "uv already installed: $(uv --version)"
 } else {
     Write-Host "   Installing uv..."
-    powershell -ExecutionPolicy Bypass -c "irm https://astral.sh/uv/install.ps1 | iex"
-    $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
-    if (Get-Command uv -ErrorAction SilentlyContinue) {
-        Write-OK "uv installed: $(uv --version)"
-    } else {
-        Write-Err "uv installation failed. Please install manually: https://docs.astral.sh/uv/"
+    try {
+        powershell -ExecutionPolicy Bypass -c "irm https://astral.sh/uv/install.ps1 | iex"
+        $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
+        # Also add common uv install path
+        $uvLocalBin = "$env:USERPROFILE\.local\bin"
+        if (Test-Path $uvLocalBin) { $env:Path += ";$uvLocalBin" }
+
+        try { $uvCheck = Get-Command uv -ErrorAction SilentlyContinue } catch {}
+        if ($uvCheck) {
+            Write-OK "uv installed: $(uv --version)"
+        } else {
+            Write-Err "uv installation failed. Please install manually: https://docs.astral.sh/uv/"
+            exit 1
+        }
+    } catch {
+        Write-Err "uv installation failed: $_"
         exit 1
     }
 }
 
-# --- Step 3: Ensure Git is installed ---
-Write-Step "Checking Git..."
-if (Get-Command git -ErrorAction SilentlyContinue) {
-    Write-OK "Git already installed: $(git --version)"
-} else {
-    Write-Host "   Git not found. Installing via winget..."
-    try {
-        winget install --id Git.Git -e --source winget --accept-package-agreements --accept-source-agreements 2>&1 | Out-Null
-        $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
-        if (Get-Command git -ErrorAction SilentlyContinue) {
-            Write-OK "Git installed: $(git --version)"
-        } else {
-            # winget installed but PATH not refreshed - try common path
-            $gitPath = "C:\Program Files\Git\cmd"
-            if (Test-Path "$gitPath\git.exe") {
-                $env:Path += ";$gitPath"
-                Write-OK "Git installed (added to PATH)"
-            } else {
-                throw "Git not in PATH"
-            }
-        }
-    } catch {
-        Write-Warn "Could not install Git via winget. Will download as ZIP instead."
-    }
-}
-
-# --- Step 4: Clone or Update Repo ---
+# --- Step 3: Download / Update Repo ---
 Write-Step "Setting up VieNeu-TTS..."
-if (Test-Path "$InstallDir\.git") {
+$hasGit = $false
+try { if (Get-Command git -ErrorAction SilentlyContinue) { $hasGit = $true } } catch {}
+
+if ((Test-Path "$InstallDir\.git") -and $hasGit) {
+    # Existing git repo - update it
     Write-Host "   Updating existing installation..."
     Push-Location $InstallDir
-    git pull --ff-only 2>&1 | Out-Null
-    Pop-Location
-    Write-OK "Updated to latest version"
-} elseif (Get-Command git -ErrorAction SilentlyContinue) {
-    Write-Host "   Cloning repository..."
-    git clone https://github.com/duchtmailbaogiang-web/TTS.git $InstallDir 2>&1 | Out-Null
-    Write-OK "Cloned to $InstallDir"
+    try {
+        & git pull --ff-only 2>&1 | Out-Null
+        Write-OK "Updated to latest version"
+    } catch {
+        Write-Warn "Git pull failed, will re-download."
+        Pop-Location
+        Remove-Item $InstallDir -Recurse -Force -ErrorAction SilentlyContinue
+    }
+    if (Get-Location | Where-Object { $_.Path -eq $InstallDir }) { Pop-Location }
+} 
+
+if (-not (Test-Path "$InstallDir\pyproject.toml")) {
+    # Fresh install - download as ZIP (no git required!)
+    Write-Host "   Downloading from GitHub..."
+    $zipFile = "$env:TEMP\VieNeu-TTS.zip"
+    $extractDir = "$env:TEMP\VieNeu-TTS-extract"
+    
+    try {
+        # Clean up any previous attempts
+        Remove-Item $zipFile -Force -ErrorAction SilentlyContinue
+        Remove-Item $extractDir -Recurse -Force -ErrorAction SilentlyContinue
+        
+        # Download
+        [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+        Invoke-WebRequest -Uri $RepoZipUrl -OutFile $zipFile -UseBasicParsing
+        Write-OK "Downloaded"
+        
+        # Extract
+        Write-Host "   Extracting..."
+        Expand-Archive -Path $zipFile -DestinationPath $extractDir -Force
+        
+        # Move to install dir
+        if (Test-Path $InstallDir) { Remove-Item $InstallDir -Recurse -Force }
+        Move-Item "$extractDir\TTS-main" $InstallDir
+        
+        # Cleanup
+        Remove-Item $zipFile -Force -ErrorAction SilentlyContinue
+        Remove-Item $extractDir -Recurse -Force -ErrorAction SilentlyContinue
+        
+        Write-OK "Extracted to $InstallDir"
+    } catch {
+        Write-Err "Failed to download repository: $_"
+        exit 1
+    }
 } else {
-    Write-Host "   Downloading as ZIP (git not available)..."
-    $zipUrl = "https://github.com/duchtmailbaogiang-web/TTS/archive/refs/heads/main.zip"
-    $zipFile = "$env:TEMP\TTS.zip"
-    Invoke-WebRequest -Uri $zipUrl -OutFile $zipFile -UseBasicParsing
-    Expand-Archive -Path $zipFile -DestinationPath "$env:TEMP\TTS-extract" -Force
-    if (Test-Path $InstallDir) { Remove-Item $InstallDir -Recurse -Force }
-    Move-Item "$env:TEMP\TTS-extract\TTS-main" $InstallDir
-    Remove-Item $zipFile -Force
-    Remove-Item "$env:TEMP\TTS-extract" -Recurse -Force -ErrorAction SilentlyContinue
-    Write-OK "Downloaded and extracted to $InstallDir"
+    Write-OK "VieNeu-TTS already installed at $InstallDir"
 }
 
 # --- Step 4: Install Dependencies ---
 Write-Step "Installing dependencies (this may take a few minutes)..."
 Push-Location $InstallDir
-uv sync --group gpu 2>&1
-Write-OK "Dependencies installed"
+try {
+    & uv sync --group gpu 2>&1
+    Write-OK "Dependencies installed"
+} catch {
+    Write-Err "Failed to install dependencies: $_"
+    Pop-Location
+    exit 1
+}
 
 # --- Step 5: Open Firewall ---
 Write-Step "Configuring firewall for port $Port..."
@@ -146,7 +167,7 @@ pause
 $startScript | Out-File -FilePath "$InstallDir\start_server.bat" -Encoding ASCII
 Write-OK "Created start_server.bat"
 
-# --- Step 7: Create Windows Task (optional auto-start) ---
+# --- Step 7: Create Windows Task (auto-start on boot) ---
 Write-Step "Creating scheduled task for auto-start..."
 try {
     $taskName = "VieNeu-TTS-Server"
@@ -192,6 +213,6 @@ $start = Read-Host "Start the server now? (y/n)"
 if ($start -eq 'y' -or $start -eq 'Y') {
     Write-Step "Starting VieNeu-TTS Server..."
     Push-Location $InstallDir
-    uv run python src/vieneu/serve.py --model $Model --port $Port
+    & uv run python src/vieneu/serve.py --model $Model --port $Port
     Pop-Location
 }
