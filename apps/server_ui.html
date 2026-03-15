@@ -782,12 +782,21 @@
     }
 
     async function saveServer() {
-        const name = document.getElementById('m-name').value.trim();
-        const host = document.getElementById('m-host').value.trim();
-        const port = parseInt(document.getElementById('m-port').value) || 23333;
-        const model_name = document.getElementById('m-model').value.trim() || 'pnnbao-ump/VieNeu-TTS';
-        const description = document.getElementById('m-desc').value.trim();
-        const is_default = document.getElementById('m-default').checked;
+        const nameEl = document.getElementById('m-name');
+        const hostEl = document.getElementById('m-host');
+        const portEl = document.getElementById('m-port');
+        const modelEl = document.getElementById('m-model');
+        const descEl = document.getElementById('m-desc');
+        const defEl = document.getElementById('m-default');
+
+        if (!nameEl || !hostEl) { console.error('Modal elements not found'); return; }
+
+        const name = nameEl.value.trim();
+        const host = hostEl.value.trim();
+        const port = parseInt(portEl?.value) || 23333;
+        const model_name = modelEl?.value?.trim() || 'pnnbao-ump/VieNeu-TTS';
+        const description = descEl?.value?.trim() || '';
+        const is_default = defEl?.checked || false;
 
         if (!name || !host) { alert('Name and Host are required.'); return; }
 
@@ -801,7 +810,9 @@
             state.editingServer = null;
             await loadServers();
             render();
+            console.log('Server saved successfully, UI refreshed');
         } catch (e) {
+            console.error('Save server error:', e);
             alert('Error: ' + e.message);
         }
     }
