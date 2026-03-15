@@ -155,13 +155,15 @@ try {
 
 # --- Step 6: Create Startup Script ---
 Write-Step "Creating startup script..."
+$uvPath = "$env:USERPROFILE\.local\bin"
 $startScript = @"
 @echo off
 cd /d "$InstallDir"
+set PATH=%USERPROFILE%\.local\bin;%PATH%
 echo Starting VieNeu-TTS Server on port $Port...
 echo Model: $Model
 echo.
-uv run python src/vieneu/serve.py --model "$Model" --port $Port
+uv run vieneu-serve --model "$Model" --port $Port
 pause
 "@
 $startScript | Out-File -FilePath "$InstallDir\start_server.bat" -Encoding ASCII
@@ -177,7 +179,7 @@ try {
     } else {
         $action = New-ScheduledTaskAction `
             -Execute "cmd.exe" `
-            -Argument "/c cd /d `"$InstallDir`" && uv run python src/vieneu/serve.py --model `"$Model`" --port $Port" `
+            -Argument "/c set PATH=%USERPROFILE%\.local\bin;%PATH% && cd /d `"$InstallDir`" && uv run vieneu-serve --model `"$Model`" --port $Port" `
             -WorkingDirectory $InstallDir
         $trigger = New-ScheduledTaskTrigger -AtStartup
         $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -RestartCount 3 -RestartInterval (New-TimeSpan -Minutes 1)
@@ -213,6 +215,6 @@ $start = Read-Host "Start the server now? (y/n)"
 if ($start -eq 'y' -or $start -eq 'Y') {
     Write-Step "Starting VieNeu-TTS Server..."
     Push-Location $InstallDir
-    & uv run python src/vieneu/serve.py --model $Model --port $Port
+    & uv run vieneu-serve --model $Model --port $Port
     Pop-Location
 }

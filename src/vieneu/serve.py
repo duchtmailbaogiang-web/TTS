@@ -30,6 +30,17 @@ def run_server(args: argparse.Namespace) -> None:
     logger.info(f"🚀 Starting VieNeu-TTS Remote Server...")
     logger.info(f"📦 Model: {args.model}")
     
+    # Auto-detect backend: use pytorch if CUDA_PATH is not set (no CUDA Toolkit)
+    backend = args.backend
+    if not backend:
+        cuda_path = os.environ.get("CUDA_PATH") or os.environ.get("CUDA_HOME")
+        if cuda_path:
+            backend = "turbomind"
+            logger.info(f"🔧 Backend: turbomind (CUDA Toolkit found at {cuda_path})")
+        else:
+            backend = "pytorch"
+            logger.info(f"🔧 Backend: pytorch (CUDA Toolkit not found, using pytorch fallback)")
+
     cmd = [
         "lmdeploy", "serve", "api_server",
         args.model,
@@ -37,7 +48,8 @@ def run_server(args: argparse.Namespace) -> None:
         "--server-port", str(args.port),
         "--tp", str(args.tp),
         "--cache-max-entry-count", str(args.memory_util),
-        "--model-name", args.model_name
+        "--model-name", args.model_name,
+        "--backend", backend
     ]
     
     if args.quant_policy:
@@ -98,6 +110,7 @@ def main() -> None:
     parser.add_argument("--tp", type=int, default=1, help="Tensor parallel size")
     parser.add_argument("--memory-util", type=float, default=0.3, help="GPU memory utilization (0.0-1.0)")
     parser.add_argument("--quant-policy", type=int, default=0, help="KV cache quantization (0, 4, 8)")
+    parser.add_argument("--backend", type=str, default=None, choices=["turbomind", "pytorch"], help="Inference backend (auto-detected if not set)")
     parser.add_argument("--tunnel", action="store_true", help="Automatically expose the server via bore.pub")
     
     args = parser.parse_args()
