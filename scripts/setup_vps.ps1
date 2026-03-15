@@ -48,7 +48,7 @@ if (Get-Command uv -ErrorAction SilentlyContinue) {
     Write-OK "uv already installed: $(uv --version)"
 } else {
     Write-Host "   Installing uv..."
-    powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
+    powershell -ExecutionPolicy Bypass -c "irm https://astral.sh/uv/install.ps1 | iex"
     $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
     if (Get-Command uv -ErrorAction SilentlyContinue) {
         Write-OK "uv installed: $(uv --version)"
