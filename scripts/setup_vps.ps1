@@ -58,7 +58,33 @@ if (Get-Command uv -ErrorAction SilentlyContinue) {
     }
 }
 
-# --- Step 3: Clone or Update Repo ---
+# --- Step 3: Ensure Git is installed ---
+Write-Step "Checking Git..."
+if (Get-Command git -ErrorAction SilentlyContinue) {
+    Write-OK "Git already installed: $(git --version)"
+} else {
+    Write-Host "   Git not found. Installing via winget..."
+    try {
+        winget install --id Git.Git -e --source winget --accept-package-agreements --accept-source-agreements 2>&1 | Out-Null
+        $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
+        if (Get-Command git -ErrorAction SilentlyContinue) {
+            Write-OK "Git installed: $(git --version)"
+        } else {
+            # winget installed but PATH not refreshed - try common path
+            $gitPath = "C:\Program Files\Git\cmd"
+            if (Test-Path "$gitPath\git.exe") {
+                $env:Path += ";$gitPath"
+                Write-OK "Git installed (added to PATH)"
+            } else {
+                throw "Git not in PATH"
+            }
+        }
+    } catch {
+        Write-Warn "Could not install Git via winget. Will download as ZIP instead."
+    }
+}
+
+# --- Step 4: Clone or Update Repo ---
 Write-Step "Setting up VieNeu-TTS..."
 if (Test-Path "$InstallDir\.git") {
     Write-Host "   Updating existing installation..."
@@ -66,10 +92,21 @@ if (Test-Path "$InstallDir\.git") {
     git pull --ff-only 2>&1 | Out-Null
     Pop-Location
     Write-OK "Updated to latest version"
-} else {
+} elseif (Get-Command git -ErrorAction SilentlyContinue) {
     Write-Host "   Cloning repository..."
     git clone https://github.com/duchtmailbaogiang-web/TTS.git $InstallDir 2>&1 | Out-Null
     Write-OK "Cloned to $InstallDir"
+} else {
+    Write-Host "   Downloading as ZIP (git not available)..."
+    $zipUrl = "https://github.com/duchtmailbaogiang-web/TTS/archive/refs/heads/main.zip"
+    $zipFile = "$env:TEMP\TTS.zip"
+    Invoke-WebRequest -Uri $zipUrl -OutFile $zipFile -UseBasicParsing
+    Expand-Archive -Path $zipFile -DestinationPath "$env:TEMP\TTS-extract" -Force
+    if (Test-Path $InstallDir) { Remove-Item $InstallDir -Recurse -Force }
+    Move-Item "$env:TEMP\TTS-extract\TTS-main" $InstallDir
+    Remove-Item $zipFile -Force
+    Remove-Item "$env:TEMP\TTS-extract" -Recurse -Force -ErrorAction SilentlyContinue
+    Write-OK "Downloaded and extracted to $InstallDir"
 }
 
 # --- Step 4: Install Dependencies ---
