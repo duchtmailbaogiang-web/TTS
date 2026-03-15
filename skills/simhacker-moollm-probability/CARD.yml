@@ -1,0 +1,87 @@
+# CARD.yml — Probability
+#
+# Success calculation from stats — no dice, just odds.
+# "The LLM is the dice. It narrates the outcome."
+
+card:
+  id: probability
+  name: "Probability"
+  type: [skill, game, randomness]
+  
+  emoji: 🎲
+  
+  rarity: common
+  
+  description: |
+    Calculate success chances from character stats and context.
+    The LLM doesn't roll dice — it evaluates probability and
+    narrates an appropriate outcome.
+
+# TOOLS REQUIRED
+
+tools:
+  required:
+    - read_file  # Read stats
+  optional: []
+
+tier: 1
+
+# METHODS
+
+methods:
+  
+  CALCULATE:
+    description: "Compute success probability"
+    parameters:
+      action: "What's being attempted"
+      actor: "Who's trying"
+      context: "Relevant factors"
+    output: chat (probability)
+    effect: "Show odds and factors"
+    invoked-by: [dm, player]
+    
+  RESOLVE:
+    description: "Determine outcome based on probability"
+    parameters:
+      probability: "Success chance"
+      stakes: "What's at risk"
+    output: chat (outcome narrative)
+    effect: "Narrate success, failure, or partial"
+    invoked-by: [dm]
+
+# STATE
+
+state: {}
+
+# HOW IT WORKS
+
+mechanism:
+  no-dice: |
+    No random number generators. The LLM evaluates
+    probability narratively, considering:
+    - Character stats
+    - Buffs and debuffs
+    - Context and stakes
+    - Story needs
+    
+  outcomes: ["Critical success", "Success", "Partial", "Failure", "Critical failure"]
+
+# ADVERTISEMENTS
+
+advertisements:
+  RESOLVE-UNCERTAINTY:
+    score: 85
+    condition: "Action with uncertain outcome"
+
+# RELATED
+
+see-also:
+  - skills/buff      # Modifies odds
+  - skills/character # Source of stats
+
+# CREDITS
+
+credits:
+  inspiration:
+    - "RPG systems"
+    - "Narrative probability"

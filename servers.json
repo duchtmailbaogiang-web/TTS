@@ -1,0 +1,13 @@
+{
+  "servers": [
+    {
+      "id": "local",
+      "name": "Local Server",
+      "host": "localhost",
+      "port": 23333,
+      "is_default": true,
+      "model_name": "pnnbao-ump/VieNeu-TTS",
+      "description": "Local LMDeploy instance"
+    }
+  ]
+}

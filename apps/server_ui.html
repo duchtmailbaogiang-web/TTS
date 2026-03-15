@@ -1,0 +1,896 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>VieNeu-TTS Server Manager</title>
+    <meta name="description" content="Manage multiple VieNeu-TTS servers and synthesize speech across your VPS fleet." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🦜</text></svg>">
+    <style>
+        /* ===== CSS VARIABLES ===== */
+        :root {
+            --bg-0: #05080f;
+            --bg-1: #0a0f1a;
+            --bg-2: #0d1321;
+            --surface: rgba(14, 20, 35, 0.85);
+            --surface-2: rgba(10, 16, 28, 0.75);
+            --surface-hover: rgba(20, 28, 48, 0.9);
+            --border: rgba(148, 163, 184, 0.12);
+            --border-hover: rgba(148, 163, 184, 0.25);
+            --text-1: #f1f5f9;
+            --text-2: #94a3b8;
+            --text-3: #64748b;
+            --accent: #2dd4bf;
+            --accent-dim: rgba(45, 212, 191, 0.15);
+            --accent-glow: rgba(45, 212, 191, 0.3);
+            --amber: #f59e0b;
+            --amber-dim: rgba(245, 158, 11, 0.15);
+            --red: #f87171;
+            --red-dim: rgba(248, 113, 133, 0.15);
+            --green: #4ade80;
+            --green-dim: rgba(74, 222, 128, 0.15);
+            --radius-sm: 10px;
+            --radius-md: 14px;
+            --radius-lg: 20px;
+            --radius-xl: 24px;
+            --shadow-card: 0 8px 32px rgba(0,0,0,0.4);
+            --transition: 0.2s ease;
+        }
+
+        /* ===== RESET & BASE ===== */
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background: var(--bg-0);
+            color: var(--text-1);
+            min-height: 100vh;
+            overflow-x: hidden;
+            line-height: 1.6;
+        }
+
+        /* ===== BACKGROUND ===== */
+        .bg-effects {
+            position: fixed; inset: 0; z-index: 0; pointer-events: none;
+        }
+        .bg-effects::before {
+            content: '';
+            position: absolute; inset: 0;
+            background:
+                radial-gradient(900px circle at 5% 5%, rgba(45,212,191,0.08), transparent 60%),
+                radial-gradient(700px circle at 95% 10%, rgba(245,158,11,0.06), transparent 50%),
+                radial-gradient(600px circle at 50% 90%, rgba(248,113,133,0.04), transparent 50%);
+        }
+        .bg-effects .grid-lines {
+            position: absolute; inset: 0;
+            background-image:
+                linear-gradient(rgba(148,163,184,0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(148,163,184,0.03) 1px, transparent 1px);
+            background-size: 60px 60px;
+            mask-image: radial-gradient(ellipse at 50% 0%, black 20%, transparent 70%);
+        }
+
+        /* ===== LAYOUT ===== */
+        .app {
+            position: relative; z-index: 1;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 24px 32px 48px;
+        }
+
+        /* ===== HEADER ===== */
+        .header {
+            display: flex; align-items: center; justify-content: space-between;
+            margin-bottom: 32px;
+            padding-bottom: 24px;
+            border-bottom: 1px solid var(--border);
+        }
+        .header-left { display: flex; align-items: center; gap: 16px; }
+        .header-logo { font-size: 40px; filter: drop-shadow(0 4px 12px rgba(45,212,191,0.3)); }
+        .header-title {
+            font-size: 22px; font-weight: 800;
+            background: linear-gradient(135deg, var(--accent), var(--amber));
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            background-clip: text;
+            letter-spacing: -0.02em;
+        }
+        .header-subtitle { font-size: 12px; color: var(--text-3); letter-spacing: 0.1em; text-transform: uppercase; margin-top: 2px; }
+        .header-actions { display: flex; gap: 12px; align-items: center; }
+
+        .btn {
+            display: inline-flex; align-items: center; gap: 8px;
+            padding: 10px 20px;
+            border-radius: var(--radius-md);
+            font-size: 13px; font-weight: 600;
+            border: 1px solid var(--border);
+            background: var(--surface);
+            color: var(--text-1);
+            cursor: pointer;
+            transition: all var(--transition);
+            font-family: inherit;
+        }
+        .btn:hover { border-color: var(--border-hover); background: var(--surface-hover); transform: translateY(-1px); }
+        .btn-primary {
+            background: linear-gradient(135deg, var(--accent), #14b8a6);
+            border-color: transparent;
+            color: #021a17;
+            box-shadow: 0 4px 20px var(--accent-glow);
+        }
+        .btn-primary:hover { box-shadow: 0 8px 30px var(--accent-glow); }
+        .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; box-shadow: none; transform: none; }
+        .btn-danger { border-color: rgba(248,113,133,0.3); color: var(--red); }
+        .btn-danger:hover { background: var(--red-dim); border-color: rgba(248,113,133,0.5); }
+        .btn-sm { padding: 6px 14px; font-size: 12px; border-radius: var(--radius-sm); }
+
+        /* ===== STATUS BADGE ===== */
+        .status-badge {
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 4px 12px;
+            border-radius: 999px;
+            font-size: 11px; font-weight: 600;
+            text-transform: uppercase; letter-spacing: 0.08em;
+        }
+        .status-dot { width: 7px; height: 7px; border-radius: 50%; }
+        .status-online { background: var(--green-dim); color: var(--green); border: 1px solid rgba(74,222,128,0.3); }
+        .status-online .status-dot { background: var(--green); box-shadow: 0 0 8px var(--green); animation: pulse-glow 2s infinite; }
+        .status-offline { background: var(--red-dim); color: var(--red); border: 1px solid rgba(248,113,133,0.3); }
+        .status-offline .status-dot { background: var(--red); }
+        .status-checking { background: var(--amber-dim); color: var(--amber); border: 1px solid rgba(245,158,11,0.3); }
+        .status-checking .status-dot { background: var(--amber); animation: pulse-glow 1s infinite; }
+        .status-unknown { background: rgba(100,116,139,0.15); color: var(--text-3); border: 1px solid rgba(100,116,139,0.2); }
+        .status-unknown .status-dot { background: var(--text-3); }
+
+        @keyframes pulse-glow { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+        /* ===== MAIN GRID ===== */
+        .main-grid {
+            display: grid;
+            grid-template-columns: 380px 1fr;
+            gap: 24px;
+            align-items: start;
+        }
+        @media (max-width: 1100px) { .main-grid { grid-template-columns: 1fr; } }
+
+        /* ===== CARD ===== */
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-card);
+            overflow: hidden;
+        }
+        .card-header {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 18px 22px;
+            border-bottom: 1px solid var(--border);
+        }
+        .card-header h2 {
+            font-size: 14px; font-weight: 700;
+            letter-spacing: 0.04em; text-transform: uppercase;
+            color: var(--text-2);
+            display: flex; align-items: center; gap: 8px;
+        }
+        .card-body { padding: 22px; }
+
+        /* ===== SERVER LIST ===== */
+        .server-list { display: flex; flex-direction: column; gap: 8px; }
+        .server-item {
+            display: flex; align-items: center; gap: 14px;
+            padding: 14px 18px;
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border);
+            background: var(--surface-2);
+            cursor: pointer;
+            transition: all var(--transition);
+            position: relative;
+        }
+        .server-item:hover { border-color: var(--border-hover); background: var(--surface-hover); }
+        .server-item.active { border-color: rgba(45,212,191,0.4); background: var(--accent-dim); }
+        .server-item.active::before {
+            content: '';
+            position: absolute; left: 0; top: 12px; bottom: 12px; width: 3px;
+            background: var(--accent); border-radius: 0 3px 3px 0;
+        }
+        .server-icon {
+            width: 40px; height: 40px;
+            display: flex; align-items: center; justify-content: center;
+            border-radius: var(--radius-sm);
+            background: rgba(45,212,191,0.08);
+            font-size: 18px;
+            flex-shrink: 0;
+        }
+        .server-info { flex: 1; min-width: 0; }
+        .server-name { font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .server-host { font-size: 11px; color: var(--text-3); font-family: 'JetBrains Mono', monospace; margin-top: 2px; }
+        .server-meta { display: flex; align-items: center; gap: 8px; }
+        .server-latency { font-size: 11px; color: var(--text-3); font-family: 'JetBrains Mono', monospace; }
+        .server-actions { display: flex; gap: 6px; }
+        .icon-btn {
+            width: 30px; height: 30px;
+            display: flex; align-items: center; justify-content: center;
+            border-radius: 8px;
+            border: 1px solid transparent;
+            background: transparent;
+            color: var(--text-3);
+            cursor: pointer;
+            transition: all var(--transition);
+            font-size: 14px;
+        }
+        .icon-btn:hover { background: rgba(148,163,184,0.1); color: var(--text-1); border-color: var(--border); }
+        .icon-btn.delete:hover { background: var(--red-dim); color: var(--red); }
+
+        /* ===== FORM ===== */
+        .form-group { margin-bottom: 16px; }
+        .form-label {
+            display: block;
+            font-size: 11px; font-weight: 600; color: var(--text-3);
+            text-transform: uppercase; letter-spacing: 0.1em;
+            margin-bottom: 6px;
+        }
+        .form-input, .form-select {
+            width: 100%;
+            padding: 10px 14px;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border);
+            background: var(--bg-1);
+            color: var(--text-1);
+            font-size: 14px;
+            font-family: inherit;
+            outline: none;
+            transition: border-color var(--transition), box-shadow var(--transition);
+        }
+        .form-input:focus, .form-select:focus {
+            border-color: rgba(45,212,191,0.5);
+            box-shadow: 0 0 0 3px rgba(45,212,191,0.1);
+        }
+        .form-input::placeholder { color: var(--text-3); }
+        .form-select {
+            appearance: none;
+            background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2'><path d='m6 9 6 6 6-6'/></svg>");
+            background-repeat: no-repeat;
+            background-position: right 12px center;
+            padding-right: 36px;
+        }
+        .form-select option { background: var(--bg-1); color: var(--text-1); }
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .form-textarea {
+            width: 100%;
+            min-height: 200px;
+            padding: 16px;
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border);
+            background: var(--bg-1);
+            color: var(--text-1);
+            font-size: 15px;
+            font-family: inherit;
+            outline: none;
+            resize: vertical;
+            line-height: 1.7;
+            transition: border-color var(--transition), box-shadow var(--transition);
+        }
+        .form-textarea:focus {
+            border-color: rgba(45,212,191,0.5);
+            box-shadow: 0 0 0 3px rgba(45,212,191,0.1);
+        }
+        .form-textarea::placeholder { color: var(--text-3); }
+
+        /* ===== TABS ===== */
+        .tabs {
+            display: flex; gap: 4px;
+            padding: 4px;
+            background: var(--bg-1);
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border);
+            margin-bottom: 20px;
+        }
+        .tab {
+            flex: 1;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 12px; font-weight: 600;
+            text-align: center;
+            cursor: pointer;
+            color: var(--text-3);
+            border: none; background: transparent;
+            transition: all var(--transition);
+            font-family: inherit;
+        }
+        .tab:hover { color: var(--text-2); }
+        .tab.active { background: var(--surface); color: var(--text-1); box-shadow: 0 2px 8px rgba(0,0,0,0.2); }
+
+        /* ===== AUDIO PLAYER ===== */
+        .audio-player {
+            width: 100%;
+            padding: 16px;
+            background: var(--bg-1);
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border);
+        }
+        .audio-player audio { width: 100%; height: 40px; }
+
+        /* ===== MODAL ===== */
+        .modal-overlay {
+            position: fixed; inset: 0; z-index: 1000;
+            background: rgba(0,0,0,0.7);
+            backdrop-filter: blur(8px);
+            display: flex; align-items: center; justify-content: center;
+            opacity: 0; visibility: hidden;
+            transition: all 0.3s ease;
+        }
+        .modal-overlay.open { opacity: 1; visibility: visible; }
+        .modal {
+            width: 480px; max-width: 90vw;
+            background: var(--bg-2);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-xl);
+            box-shadow: 0 32px 80px rgba(0,0,0,0.6);
+            transform: scale(0.95); transition: transform 0.3s ease;
+        }
+        .modal-overlay.open .modal { transform: scale(1); }
+        .modal-header {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 20px 24px;
+            border-bottom: 1px solid var(--border);
+        }
+        .modal-header h3 { font-size: 16px; font-weight: 700; }
+        .modal-body { padding: 24px; }
+        .modal-footer {
+            display: flex; justify-content: flex-end; gap: 10px;
+            padding: 16px 24px;
+            border-top: 1px solid var(--border);
+        }
+
+        /* ===== SYNTHESIS STATUS ===== */
+        .synthesis-status {
+            display: flex; align-items: center; gap: 10px;
+            padding: 12px 16px;
+            border-radius: var(--radius-sm);
+            font-size: 13px; font-weight: 500;
+            margin-top: 16px;
+        }
+        .synthesis-status.loading { background: var(--amber-dim); color: var(--amber); border: 1px solid rgba(245,158,11,0.2); }
+        .synthesis-status.success { background: var(--green-dim); color: var(--green); border: 1px solid rgba(74,222,128,0.2); }
+        .synthesis-status.error { background: var(--red-dim); color: var(--red); border: 1px solid rgba(248,113,133,0.2); }
+
+        .spinner {
+            width: 16px; height: 16px;
+            border: 2px solid transparent;
+            border-top-color: currentColor;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* ===== EMPTY STATE ===== */
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--text-3);
+        }
+        .empty-state-icon { font-size: 40px; margin-bottom: 12px; opacity: 0.6; }
+        .empty-state-text { font-size: 13px; }
+
+        /* ===== SETTINGS GRID ===== */
+        .settings-grid {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+            margin-top: 16px;
+        }
+        .setting-chip {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 10px 14px;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border);
+            background: var(--surface-2);
+            font-size: 12px;
+        }
+        .setting-chip label { color: var(--text-3); font-weight: 500; }
+        .setting-chip .value { color: var(--text-1); font-weight: 600; font-family: 'JetBrains Mono', monospace; font-size: 12px; }
+
+        /* ===== ANIMATION ===== */
+        .fade-in { animation: fadeIn 0.4s ease both; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* ===== SCROLLBAR ===== */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #475569; }
+    </style>
+</head>
+<body>
+    <div class="bg-effects"><div class="grid-lines"></div></div>
+
+    <div class="app" id="app"></div>
+
+    <script>
+    // =============================================
+    // VieNeu-TTS Server Manager — Vanilla JS SPA
+    // =============================================
+
+    const API = '';  // Same origin
+
+    // --- State ---
+    const state = {
+        servers: [],
+        healthMap: {},   // server_id -> HealthResult
+        selectedServerId: null,
+        voices: [],
+        activeTab: 'synthesize',  // 'synthesize' | 'servers'
+        modalOpen: false,
+        modalMode: 'add', // 'add' | 'edit'
+        editingServer: null,
+        synthesizing: false,
+        synthStatus: null, // { type: 'loading'|'success'|'error', message: string }
+        audioUrl: null,
+    };
+
+    // --- API Helpers ---
+    async function api(method, path, body = null) {
+        const opts = { method, headers: { 'Content-Type': 'application/json' } };
+        if (body) opts.body = JSON.stringify(body);
+        const res = await fetch(`${API}${path}`, opts);
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({ detail: res.statusText }));
+            throw new Error(err.detail || 'API Error');
+        }
+        return res.json();
+    }
+
+    async function loadServers() {
+        try {
+            const data = await api('GET', '/api/servers');
+            state.servers = data.servers || [];
+            if (!state.selectedServerId && state.servers.length > 0) {
+                const def = state.servers.find(s => s.is_default) || state.servers[0];
+                state.selectedServerId = def.id;
+            }
+        } catch (e) {
+            console.error('Failed to load servers:', e);
+        }
+    }
+
+    async function checkAllHealth() {
+        try {
+            const data = await api('GET', '/api/servers/health-all');
+            state.healthMap = {};
+            for (const r of (data.results || [])) {
+                state.healthMap[r.server_id] = r;
+            }
+        } catch (e) {
+            console.error('Health check failed:', e);
+        }
+    }
+
+    async function loadVoices(serverId) {
+        try {
+            const data = await api('GET', `/api/servers/${serverId}/voices`);
+            state.voices = data.voices || [];
+        } catch (e) {
+            state.voices = [];
+        }
+    }
+
+    // --- Render Engine ---
+    function render() {
+        const app = document.getElementById('app');
+        app.innerHTML = `
+            ${renderHeader()}
+            <div class="main-grid">
+                <div class="sidebar">
+                    ${renderServerList()}
+                </div>
+                <div class="main-content">
+                    ${renderTabs()}
+                    ${state.activeTab === 'synthesize' ? renderSynthesizePanel() : renderSettingsPanel()}
+                </div>
+            </div>
+            ${renderModal()}
+        `;
+        bindEvents();
+    }
+
+    function renderHeader() {
+        return `
+        <div class="header fade-in">
+            <div class="header-left">
+                <div class="header-logo">🦜</div>
+                <div>
+                    <div class="header-title">VieNeu-TTS Manager</div>
+                    <div class="header-subtitle">Multi-Server Control Panel</div>
+                </div>
+            </div>
+            <div class="header-actions">
+                <button class="btn btn-sm" onclick="doHealthCheckAll()">🔄 Health Check</button>
+                <button class="btn btn-primary btn-sm" onclick="openAddModal()">＋ Add Server</button>
+            </div>
+        </div>`;
+    }
+
+    function renderServerList() {
+        const servers = state.servers;
+        const items = servers.map(s => {
+            const health = state.healthMap[s.id];
+            const isActive = s.id === state.selectedServerId;
+            const statusClass = health ? `status-${health.status}` : 'status-unknown';
+            const statusLabel = health ? health.status : 'unknown';
+            const latencyText = health?.latency_ms ? `${health.latency_ms}ms` : '';
+            return `
+            <div class="server-item ${isActive ? 'active' : ''}" onclick="selectServer('${s.id}')">
+                <div class="server-icon">${s.is_default ? '⭐' : '🖥️'}</div>
+                <div class="server-info">
+                    <div class="server-name">${esc(s.name)}</div>
+                    <div class="server-host">${esc(s.host)}:${s.port}</div>
+                </div>
+                <div class="server-meta">
+                    ${latencyText ? `<span class="server-latency">${latencyText}</span>` : ''}
+                    <span class="status-badge ${statusClass}">
+                        <span class="status-dot"></span>
+                        ${statusLabel}
+                    </span>
+                </div>
+                <div class="server-actions">
+                    <button class="icon-btn" onclick="event.stopPropagation(); openEditModal('${s.id}')" title="Edit">✏️</button>
+                    <button class="icon-btn delete" onclick="event.stopPropagation(); deleteServer('${s.id}')" title="Delete">🗑️</button>
+                </div>
+            </div>`;
+        }).join('');
+
+        return `
+        <div class="card">
+            <div class="card-header">
+                <h2>🖥️ Servers (${servers.length})</h2>
+            </div>
+            <div class="card-body">
+                ${servers.length === 0 ? `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">🔌</div>
+                        <div class="empty-state-text">No servers configured.<br>Click "Add Server" to get started.</div>
+                    </div>
+                ` : `<div class="server-list">${items}</div>`}
+            </div>
+        </div>`;
+    }
+
+    function renderTabs() {
+        return `
+        <div class="tabs">
+            <button class="tab ${state.activeTab === 'synthesize' ? 'active' : ''}" onclick="switchTab('synthesize')">🎙️ Synthesize</button>
+            <button class="tab ${state.activeTab === 'servers' ? 'active' : ''}" onclick="switchTab('servers')">⚙️ Server Details</button>
+        </div>`;
+    }
+
+    function renderSynthesizePanel() {
+        const selected = state.servers.find(s => s.id === state.selectedServerId);
+        const health = state.healthMap[state.selectedServerId];
+        const isOnline = health?.status === 'online';
+        const voiceOpts = state.voices.map(v => `<option value="${esc(v.id)}">${esc(v.description)}</option>`).join('');
+
+        return `
+        <div class="card fade-in">
+            <div class="card-header">
+                <h2>🎙️ Text-to-Speech</h2>
+                ${selected ? `<span class="status-badge ${health ? 'status-' + health.status : 'status-unknown'}">
+                    <span class="status-dot"></span>${selected.name}
+                </span>` : ''}
+            </div>
+            <div class="card-body">
+                ${!selected ? `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">👈</div>
+                        <div class="empty-state-text">Select a server from the sidebar to start.</div>
+                    </div>
+                ` : `
+                    <div class="form-group">
+                        <label class="form-label">Server</label>
+                        <select class="form-select" id="server-select" onchange="selectServer(this.value)">
+                            ${state.servers.map(s => `<option value="${s.id}" ${s.id === state.selectedServerId ? 'selected' : ''}>${esc(s.name)} — ${esc(s.host)}:${s.port}</option>`).join('')}
+                        </select>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Voice</label>
+                            <select class="form-select" id="voice-select">
+                                <option value="">Default Voice</option>
+                                ${voiceOpts}
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Temperature</label>
+                            <input type="number" class="form-input" id="temperature" value="1.0" step="0.1" min="0.1" max="2.0" />
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Text Input</label>
+                        <textarea class="form-textarea" id="tts-text" placeholder="Nhập văn bản cần đọc tại đây...&#10;&#10;Ví dụ: Xin chào, tôi là VieNeu. Tôi có thể giúp bạn đọc sách, làm chatbot thời gian thực, hoặc clone giọng nói."></textarea>
+                    </div>
+                    <button class="btn btn-primary" style="width:100%; padding: 14px;" id="btn-synthesize"
+                            onclick="doSynthesize()" ${state.synthesizing ? 'disabled' : ''}>
+                        ${state.synthesizing ? '<span class="spinner"></span> Đang xử lý...' : '🚀 Tổng hợp giọng nói'}
+                    </button>
+                    ${state.synthStatus ? `
+                        <div class="synthesis-status ${state.synthStatus.type}">
+                            ${state.synthStatus.type === 'loading' ? '<span class="spinner"></span>' : ''}
+                            ${esc(state.synthStatus.message)}
+                        </div>
+                    ` : ''}
+                    ${state.audioUrl ? `
+                        <div class="audio-player" style="margin-top: 16px;">
+                            <audio controls autoplay src="${state.audioUrl}"></audio>
+                        </div>
+                    ` : ''}
+                `}
+            </div>
+        </div>`;
+    }
+
+    function renderSettingsPanel() {
+        const selected = state.servers.find(s => s.id === state.selectedServerId);
+        if (!selected) {
+            return `
+            <div class="card fade-in">
+                <div class="card-header"><h2>⚙️ Server Details</h2></div>
+                <div class="card-body">
+                    <div class="empty-state">
+                        <div class="empty-state-icon">📡</div>
+                        <div class="empty-state-text">Select a server to view details.</div>
+                    </div>
+                </div>
+            </div>`;
+        }
+        const health = state.healthMap[selected.id];
+        return `
+        <div class="card fade-in">
+            <div class="card-header">
+                <h2>⚙️ ${esc(selected.name)}</h2>
+                <button class="btn btn-sm" onclick="doHealthCheck('${selected.id}')">🔄 Check</button>
+            </div>
+            <div class="card-body">
+                <div class="settings-grid">
+                    <div class="setting-chip"><label>Host</label><span class="value">${esc(selected.host)}</span></div>
+                    <div class="setting-chip"><label>Port</label><span class="value">${selected.port}</span></div>
+                    <div class="setting-chip"><label>Model</label><span class="value">${esc(selected.model_name)}</span></div>
+                    <div class="setting-chip"><label>Default</label><span class="value">${selected.is_default ? '⭐ Yes' : 'No'}</span></div>
+                    <div class="setting-chip"><label>Status</label><span class="value">${health ? health.status.toUpperCase() : 'UNKNOWN'}</span></div>
+                    <div class="setting-chip"><label>Latency</label><span class="value">${health?.latency_ms ? health.latency_ms + 'ms' : '—'}</span></div>
+                </div>
+                ${health?.models?.length ? `
+                    <div style="margin-top: 16px;">
+                        <label class="form-label">Loaded Models</label>
+                        <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px;">
+                            ${health.models.map(m => `<span class="status-badge status-online" style="font-size:10px;">${esc(m)}</span>`).join('')}
+                        </div>
+                    </div>
+                ` : ''}
+                ${health?.error ? `
+                    <div class="synthesis-status error" style="margin-top: 16px;">❌ ${esc(health.error)}</div>
+                ` : ''}
+                <div style="margin-top: 20px;">
+                    <label class="form-label">API Endpoint</label>
+                    <input class="form-input" readonly value="http://${selected.host}:${selected.port}/v1" onclick="this.select()" style="cursor:copy; font-family: 'JetBrains Mono', monospace; font-size: 12px;" />
+                </div>
+                <div style="margin-top: 20px;">
+                    <label class="form-label">Available Voices (${state.voices.length})</label>
+                    ${state.voices.length > 0 ? `
+                        <div style="margin-top: 8px; max-height: 200px; overflow-y: auto; display: flex; flex-direction: column; gap: 4px;">
+                            ${state.voices.map(v => `
+                                <div class="setting-chip">
+                                    <label>${esc(v.description)}</label>
+                                    <span class="value">${esc(v.id)}</span>
+                                </div>
+                            `).join('')}
+                        </div>
+                    ` : `<div style="color: var(--text-3); font-size: 12px; margin-top: 4px;">No voices loaded or server offline.</div>`}
+                </div>
+            </div>
+        </div>`;
+    }
+
+    function renderModal() {
+        if (!state.modalOpen) return '<div class="modal-overlay"></div>';
+        const isEdit = state.modalMode === 'edit';
+        const s = state.editingServer || { name: '', host: '', port: 23333, model_name: 'pnnbao-ump/VieNeu-TTS', description: '', is_default: false };
+        return `
+        <div class="modal-overlay open" onclick="closeModal(event)">
+            <div class="modal" onclick="event.stopPropagation()">
+                <div class="modal-header">
+                    <h3>${isEdit ? '✏️ Edit Server' : '＋ Add Server'}</h3>
+                    <button class="icon-btn" onclick="closeModal()">✕</button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label class="form-label">Server Name</label>
+                        <input class="form-input" id="m-name" value="${esc(s.name)}" placeholder="e.g. VPS Singapore" />
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Host / IP</label>
+                            <input class="form-input" id="m-host" value="${esc(s.host)}" placeholder="e.g. 192.168.1.100" />
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Port</label>
+                            <input class="form-input" id="m-port" type="number" value="${s.port}" />
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Model Name</label>
+                        <input class="form-input" id="m-model" value="${esc(s.model_name)}" placeholder="pnnbao-ump/VieNeu-TTS" />
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Description</label>
+                        <input class="form-input" id="m-desc" value="${esc(s.description)}" placeholder="Optional description..." />
+                    </div>
+                    <div class="form-group" style="display:flex; align-items:center; gap: 8px;">
+                        <input type="checkbox" id="m-default" ${s.is_default ? 'checked' : ''} />
+                        <label for="m-default" style="font-size:13px; color: var(--text-2); cursor:pointer;">Set as default server</label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn" onclick="closeModal()">Cancel</button>
+                    <button class="btn btn-primary" onclick="saveServer()">${isEdit ? 'Save Changes' : 'Add Server'}</button>
+                </div>
+            </div>
+        </div>`;
+    }
+
+    // --- Event Handlers ---
+    function bindEvents() {}
+
+    function esc(str) {
+        if (!str) return '';
+        const div = document.createElement('div');
+        div.textContent = String(str);
+        return div.innerHTML;
+    }
+
+    function switchTab(tab) {
+        state.activeTab = tab;
+        render();
+    }
+
+    async function selectServer(id) {
+        state.selectedServerId = id;
+        state.voices = [];
+        render();
+        await loadVoices(id);
+        render();
+    }
+
+    function openAddModal() {
+        state.modalOpen = true;
+        state.modalMode = 'add';
+        state.editingServer = null;
+        render();
+    }
+
+    function openEditModal(id) {
+        const s = state.servers.find(s => s.id === id);
+        if (!s) return;
+        state.modalOpen = true;
+        state.modalMode = 'edit';
+        state.editingServer = { ...s };
+        render();
+    }
+
+    function closeModal(e) {
+        if (e && e.target !== e.currentTarget) return;
+        state.modalOpen = false;
+        state.editingServer = null;
+        render();
+    }
+
+    async function saveServer() {
+        const name = document.getElementById('m-name').value.trim();
+        const host = document.getElementById('m-host').value.trim();
+        const port = parseInt(document.getElementById('m-port').value) || 23333;
+        const model_name = document.getElementById('m-model').value.trim() || 'pnnbao-ump/VieNeu-TTS';
+        const description = document.getElementById('m-desc').value.trim();
+        const is_default = document.getElementById('m-default').checked;
+
+        if (!name || !host) { alert('Name and Host are required.'); return; }
+
+        try {
+            if (state.modalMode === 'edit' && state.editingServer) {
+                await api('PUT', `/api/servers/${state.editingServer.id}`, { name, host, port, model_name, description, is_default });
+            } else {
+                await api('POST', '/api/servers', { name, host, port, model_name, description, is_default });
+            }
+            state.modalOpen = false;
+            state.editingServer = null;
+            await loadServers();
+            render();
+        } catch (e) {
+            alert('Error: ' + e.message);
+        }
+    }
+
+    async function deleteServer(id) {
+        const s = state.servers.find(s => s.id === id);
+        if (!s) return;
+        if (!confirm(`Delete server "${s.name}"?`)) return;
+        try {
+            await api('DELETE', `/api/servers/${id}`);
+            if (state.selectedServerId === id) state.selectedServerId = null;
+            await loadServers();
+            render();
+        } catch (e) {
+            alert('Error: ' + e.message);
+        }
+    }
+
+    async function doHealthCheck(serverId) {
+        state.healthMap[serverId] = { server_id: serverId, status: 'checking', name: '' };
+        render();
+        try {
+            const result = await api('GET', `/api/servers/${serverId}/health`);
+            state.healthMap[serverId] = result;
+        } catch (e) {
+            state.healthMap[serverId] = { server_id: serverId, status: 'error', error: e.message, name: '' };
+        }
+        render();
+    }
+
+    async function doHealthCheckAll() {
+        for (const s of state.servers) {
+            state.healthMap[s.id] = { server_id: s.id, status: 'checking', name: s.name };
+        }
+        render();
+        await checkAllHealth();
+        render();
+    }
+
+    async function doSynthesize() {
+        const text = document.getElementById('tts-text')?.value?.trim();
+        if (!text) { alert('Please enter text.'); return; }
+        if (!state.selectedServerId) { alert('Please select a server.'); return; }
+
+        const voiceSelect = document.getElementById('voice-select');
+        const voiceName = voiceSelect?.value || null;
+        const temperature = parseFloat(document.getElementById('temperature')?.value) || 1.0;
+
+        state.synthesizing = true;
+        state.synthStatus = { type: 'loading', message: 'Đang gửi yêu cầu tới server...' };
+        state.audioUrl = null;
+        render();
+
+        try {
+            const result = await api('POST', '/api/synthesize', {
+                server_id: state.selectedServerId,
+                text: text,
+                voice_name: voiceName || undefined,
+                temperature: temperature,
+            });
+            state.audioUrl = result.audio_url;
+            state.synthStatus = { type: 'success', message: '✅ Tổng hợp thành công!' };
+        } catch (e) {
+            state.synthStatus = { type: 'error', message: '❌ Lỗi: ' + e.message };
+        } finally {
+            state.synthesizing = false;
+            render();
+        }
+    }
+
+    // --- Init ---
+    async function init() {
+        render();
+        await loadServers();
+        render();
+        await checkAllHealth();
+        render();
+        if (state.selectedServerId) {
+            await loadVoices(state.selectedServerId);
+            render();
+        }
+        // Auto health check every 30s
+        setInterval(async () => {
+            await checkAllHealth();
+            render();
+        }, 30000);
+    }
+
+    init();
+    </script>
+</body>
+</html>
