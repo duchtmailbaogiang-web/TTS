@@ -5165,6 +5165,11 @@ dev = [
     { name = "pytest" },
     { name = "pytest-asyncio" },
 ]
+manager = [
+    { name = "fastapi" },
+    { name = "httpx" },
+    { name = "uvicorn" },
+]
 web = [
     { name = "accelerate", marker = "sys_platform == 'darwin'" },
     { name = "gradio" },
@@ -5192,7 +5197,7 @@ requires-dist = [
     { name = "onnxruntime", specifier = ">=1.23.2" },
     { name = "perth", specifier = ">=0.2.0" },
     { name = "requests" },
-    { name = "sea-g2p", specifier = ">=0.5.8" },
+    { name = "sea-g2p", specifier = ">=0.5.9" },
     { name = "torch", marker = "sys_platform != 'darwin'", index = "https://download.pytorch.org/whl/cu128" },
     { name = "torch", marker = "sys_platform == 'darwin'", index = "https://pypi.org/simple" },
     { name = "torchaudio", marker = "sys_platform != 'darwin'", index = "https://download.pytorch.org/whl/cu128" },
@@ -5207,6 +5212,11 @@ provides-extras = ["gpu"]
 dev = [
     { name = "pytest" },
     { name = "pytest-asyncio" },
+]
+manager = [
+    { name = "fastapi", specifier = ">=0.115.0" },
+    { name = "httpx", specifier = ">=0.28.0" },
+    { name = "uvicorn", specifier = ">=0.34.0" },
 ]
 web = [
     { name = "accelerate", marker = "sys_platform == 'darwin'" },

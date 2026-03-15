@@ -7,7 +7,7 @@
 #   powershell -ExecutionPolicy Bypass -c "irm https://raw.githubusercontent.com/duchtmailbaogiang-web/TTS/main/scripts/setup_vps.ps1 | iex"
 
 # --- Config (edit these if needed) ---
-$Model = "duchtmailbaogiang-web/TTS"
+$Model = "pnnbao-ump/VieNeu-TTS"        # HuggingFace model name (NOT GitHub repo)
 $Port = 23333
 $InstallDir = "C:\VieNeu-TTS"
 $RepoZipUrl = "https://github.com/duchtmailbaogiang-web/TTS/archive/refs/heads/main.zip"
@@ -128,7 +128,7 @@ if (-not (Test-Path "$InstallDir\pyproject.toml")) {
 Write-Step "Installing dependencies (this may take a few minutes)..."
 Push-Location $InstallDir
 try {
-    & uv sync --group gpu 2>&1
+    & uv sync 2>&1
     Write-OK "Dependencies installed"
 } catch {
     Write-Err "Failed to install dependencies: $_"

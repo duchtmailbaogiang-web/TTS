@@ -10,7 +10,7 @@
 
 set -e
 
-MODEL="${MODEL:-duchtmailbaogiang-web/TTS}"
+MODEL="${MODEL:-pnnbao-ump/VieNeu-TTS}"  # HuggingFace model name
 PORT="${PORT:-23333}"
 
 # Parse args
