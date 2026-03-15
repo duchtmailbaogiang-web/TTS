@@ -4,12 +4,12 @@
 # Run this on the VPS to install and start VieNeu-TTS server.
 #
 # Usage:
-#   irm https://raw.githubusercontent.com/pnnbao97/VieNeu-TTS/main/scripts/setup_vps.ps1 | iex
+#   irm https://raw.githubusercontent.com/duchtmailbaogiang-web/TTS/main/scripts/setup_vps.ps1 | iex
 #   --- or ---
 #   .\setup_vps.ps1 [-Model "pnnbao-ump/VieNeu-TTS"] [-Port 23333] [-InstallDir "C:\VieNeu-TTS"]
 
 param(
-    [string]$Model = "pnnbao-ump/VieNeu-TTS",
+    [string]$Model = "duchtmailbaogiang-web/TTS",
     [int]$Port = 23333,
     [string]$InstallDir = "C:\VieNeu-TTS"
 )
@@ -68,7 +68,7 @@ if (Test-Path "$InstallDir\.git") {
     Write-OK "Updated to latest version"
 } else {
     Write-Host "   Cloning repository..."
-    git clone https://github.com/pnnbao97/VieNeu-TTS.git $InstallDir 2>&1 | Out-Null
+    git clone https://github.com/duchtmailbaogiang-web/TTS.git $InstallDir 2>&1 | Out-Null
     Write-OK "Cloned to $InstallDir"
 }
 

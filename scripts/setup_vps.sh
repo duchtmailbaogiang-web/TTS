@@ -4,13 +4,13 @@
 # One-click setup for a Linux VPS with Docker + GPU support.
 #
 # Usage:
-#   curl -fsSL https://raw.githubusercontent.com/pnnbao97/VieNeu-TTS/main/scripts/setup_vps.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/duchtmailbaogiang-web/TTS/main/scripts/setup_vps.sh | bash
 #   --- or ---
 #   ./setup_vps.sh [--model MODEL] [--port PORT]
 
 set -e
 
-MODEL="${MODEL:-pnnbao-ump/VieNeu-TTS}"
+MODEL="${MODEL:-duchtmailbaogiang-web/TTS}"
 PORT="${PORT:-23333}"
 
 # Parse args
